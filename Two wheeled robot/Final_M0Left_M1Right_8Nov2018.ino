@@ -7,10 +7,17 @@ const long interval = 20;
 int diffPosition0,diffPosition1;
 int prevPosition0,prevPosition1;
 
-#define encoder0PinA 2
-#define encoder0PinB 13
-#define encoder1PinA 3
-#define encoder1PinB 10
+#define encoder0PinA 3
+#define encoder0PinB 10
+#define encoder1PinA 2
+#define encoder1PinB 13
+
+#define in1A 7
+#define in1B 8 
+#define pwm1 5
+#define in2A 9
+#define in2B 4
+#define pwm2 6
 
 volatile long encoder0Pos = 0;
 volatile long encoder1Pos = 0;
@@ -21,19 +28,19 @@ char ident;
 
 //Right motor speed control
 
-double Pk1 = 60;  //speed it gets there
-double Ik1 = 4;
-double Dk1 = 0.01;
-double Setpoint1, Input1, Output1, Output1a;    // PID variables position
+double Pk1 = 40;  //speed it gets there
+double Ik1 = 10;
+double Dk1 = 0.0001;
+double Setpoint1, Input1, Output1, Output1a;    // PID variables velocity0
 
 PID PID1(&Input1, &Output1, &Setpoint1, Pk1, Ik1 , Dk1, DIRECT);
 
 //Right motor speed control
 
-double Pk2 = 60;  //speed it gets there
-double Ik2 = 4;
-double Dk2 = 0.01;
-double Setpoint2, Input2, Output2, Output2a;    // PID variables velocity
+double Pk2 = 40;  //speed it gets there
+double Ik2 = 10;
+double Dk2 = 0.0001;
+double Setpoint2, Input2, Output2, Output2a;    // PID variables velocity1
 
 PID PID2(&Input2, &Output2, &Setpoint2, Pk2, Ik2 , Dk2, DIRECT);
 
@@ -49,8 +56,12 @@ void setup() {
   PID2.SetOutputLimits(-255, 255);
   PID2.SetSampleTime(20);
 
-  pinMode(9, OUTPUT);   //  motor PWMs
-  pinMode(10, OUTPUT);
+  pinMode(in1A, OUTPUT);   //  motor PWMs
+  pinMode(in1B, OUTPUT);
+  pinMode(pwm1, OUTPUT);   
+  pinMode(in2A, OUTPUT);
+  pinMode(in2B, OUTPUT); 
+  pinMode(pwm2, OUTPUT);
 
   pinMode(encoder0PinA, INPUT_PULLUP); 
   pinMode(encoder0PinB, INPUT_PULLUP); 
@@ -58,16 +69,16 @@ void setup() {
   pinMode(encoder1PinB, INPUT_PULLUP); 
  
 // encoder pin on interrupt 0 (pin 2)
-  attachInterrupt(digitalPinToInterrupt(2), doEncoder0A, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder0PinA), doEncoder0A, CHANGE);
   
 // encoder pin on interrupt 1 (pin 3)
-  attachInterrupt(digitalPinToInterrupt(13), doEncoder0B, CHANGE);  
+  attachInterrupt(digitalPinToInterrupt(encoder0PinB), doEncoder0B, CHANGE);  
 
 // encoder pin on interrupt 0 (pin 2)
-  attachInterrupt(digitalPinToInterrupt(3), doEncoder1A, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder1PinA), doEncoder1A, CHANGE);
   
 // encoder pin on interrupt 1 (pin 3)
-  attachInterrupt(digitalPinToInterrupt(10), doEncoder1B, CHANGE);  
+  attachInterrupt(digitalPinToInterrupt(encoder1PinB), doEncoder1B, CHANGE);  
     
 }
 
@@ -85,10 +96,10 @@ void loop(){ //Do stuff here
 
           // calculate velocity - change in encoder counts over time
 
-          diffPosition0 = abs(encoder0Pos - prevPosition0);       // calc change over time and make it always position with abs         
-          prevPosition0 = encoder0Pos;
-          diffPosition1 = abs(encoder1Pos - prevPosition1);       // calc change over time and make it always position with abs         
-          prevPosition1 = encoder1Pos;
+          diffPosition0 = ((encoder0Pos - prevPosition0));       // calc change over time and make it always position with abs         
+          prevPosition0 = encoder0Pos; 
+          diffPosition1 = ((encoder1Pos - prevPosition1));       // calc change over time and make it always position with abs         
+          prevPosition1 = encoder1Pos;          
           Serial.print(" , ");                   
           Serial.print(diffPosition0);
           Serial.print(" , "); 
@@ -103,7 +114,11 @@ void loop(){ //Do stuff here
 
               if (ident == 'a') {
                   Setpoint1 = read1;
+                  Serial.print("input0 = ");
+                  Serial.println(read1);
                   Setpoint2 = read2;
+                  Serial.print("input1 = ");
+                  Serial.println(read2);
               }
               
           } // end of serial read
@@ -124,66 +139,66 @@ void loop(){ //Do stuff here
           
           if (Output1 < 0)                                       // decide which way to turn the motor
           {
-            Output1a = abs(Output1);
+            //Output1a = abs(Output1);
             //analogWrite(9, Output1a);                           // set PWM pins 
             //analogWrite(10, 0);
-            analogWrite(6, Output1a);
-            analogWrite(4, 0);
-            analogWrite(9, 1023);
+            analogWrite(pwm1, abs(Output1));
+            analogWrite(in1A, 0);
+            analogWrite(in1B, 1023);
           }
           else if (Output1 > 0)                                  // decide which way to turn the motor
           { 
-            Output1a = abs(Output1);
+            //Output1a = abs(Output1);
             //analogWrite(10, Output1a);  
             //analogWrite(9, 0);
-            analogWrite(6, Output1a);
-            analogWrite(4, 1023);
-            analogWrite(9, 0);
+            analogWrite(pwm1, abs(Output1));
+            analogWrite(in1A, 1023);
+            analogWrite(in1B, 0);
           } 
           else if (Input1==0)
           {
-            analogWrite(6, 0);
-            analogWrite(4, 0);
-            analogWrite(9, 0);
+            analogWrite(pwm1, 0);
+            analogWrite(in1A, 0);
+            analogWrite(in1B, 0);
           }
           else
           {
-            analogWrite(6, 0);
-            analogWrite(4, 0);
-            analogWrite(9, 0);
+            analogWrite(pwm1, 0);
+            analogWrite(in1A, 0);
+            analogWrite(in1B, 0);
           } 
 
 
           // drive motor1
           if (Output2 < 0)                                       // decide which way to turn the motor
           {
-            Output2a = abs(Output2);
+            //Output2a = abs(Output2);
             //analogWrite(9, Output1a);                           // set PWM pins 
             //analogWrite(10, 0);
-            analogWrite(5, Output1a);
-            analogWrite(8, 0);
-            analogWrite(7, 1023);
+            analogWrite(pwm2, abs(Output2));
+            analogWrite(in2A, 0);
+            analogWrite(in2B, 1023);
           }
           else if (Output1 > 0)                                  // decide which way to turn the motor
           { 
-            Output2a = abs(Output2);
+            //Output2a = abs(Output2);
             //analogWrite(10, Output1a);  
             //analogWrite(9, 0);
-            analogWrite(5, Output1a);
-            analogWrite(8, 1023);
-            analogWrite(7, 0);
+            analogWrite(pwm2, abs(Output2));
+            analogWrite(in2A, 1023);
+            analogWrite(in2B, 0);
           } 
           else if (Input2==0)
           {
-            analogWrite(5, 0);
-            analogWrite(8, 0);
-            analogWrite(7, 0);
+            analogWrite(pwm2, 0);
+            analogWrite(in2A, 0);
+            analogWrite(in2B, 0);
           }
           else
           {
-            analogWrite(5, 0);
-            analogWrite(8, 0);
-            analogWrite(7, 0);
+            analogWrite(pwm2, 0);
+            analogWrite(in2A, 0);
+            analogWrite(in2B, 0);
           }                 
              
                       
